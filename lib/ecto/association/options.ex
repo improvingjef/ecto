@@ -1,21 +1,90 @@
 defmodule Ecto.Association.Options do
-  def check!(opts, valid, fun_arity) do
-    case Enum.find(opts, fn {k, _} -> k not in valid end) do
+  @default_options %{
+    field: [
+      :default,
+      :source,
+      :autogenerate,
+      :read_after_writes,
+      :virtual,
+      :primary_key,
+      :load_in_query,
+      :redact,
+      :foreign_key,
+      :on_replace,
+      :defaults,
+      :type,
+      :where,
+      :references,
+      :skip_default_validation,
+      :writable
+    ],
+    belongs_to: [
+      :foreign_key,
+      :references,
+      :define_field,
+      :type,
+      :on_replace,
+      :defaults,
+      :primary_key,
+      :source,
+      :where
+    ],
+    has: [
+      :foreign_key,
+      :references,
+      :through,
+      :on_delete,
+      :defaults,
+      :on_replace,
+      :where,
+      :preload_order
+    ],
+    many_to_many: [
+      :join_through,
+      :join_defaults,
+      :join_keys,
+      :on_delete,
+      :defaults,
+      :on_replace,
+      :unique,
+      :where,
+      :join_where,
+      :preload_order
+    ],
+    embeds_one: [
+      :on_replace,
+      :source,
+      :load_in_query,
+      :defaults_to_struct
+    ],
+    embeds_many: [
+      :on_replace,
+      :source,
+      :load_in_query
+    ]
+  }
+
+  defp valid(which) do
+    Map.get(@default_options, which, [])
+  end
+
+  def check!(which, opts, fun_arity) do
+    case Enum.find(opts, fn {k, _} -> k not in valid(which) end) do
       {k, _} -> raise ArgumentError, "invalid option #{inspect(k)} for #{fun_arity}"
       nil -> :ok
     end
   end
 
-  def check!({:parameterized, _}, _opts, _valid, _fun_arity) do
+  def check!(_which, {:parameterized, _}, _opts, _fun_arity) do
     :ok
   end
 
-  def check!({_, type}, opts, valid, fun_arity) do
-    check!(type, opts, valid, fun_arity)
+  def check!(which, {_, type}, opts, fun_arity) do
+    check!(which, type, opts, fun_arity)
   end
 
-  def check!(_type, opts, valid, fun_arity) do
-    check!(opts, valid, fun_arity)
+  def check!(which, _type, opts, fun_arity) do
+    check!(which, opts, fun_arity)
   end
 
   # Internal function for integrating associations into schemas.

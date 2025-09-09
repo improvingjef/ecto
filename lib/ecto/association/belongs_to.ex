@@ -21,18 +21,7 @@ defmodule Ecto.Association.BelongsTo do
 
   # :primary_key is valid here to support associative entity
   # https://en.wikipedia.org/wiki/Associative_entity
-  @valid_belongs_to_options [
-    :foreign_key,
-    :references,
-    :define_field,
-    :type,
-    :on_replace,
-    :defaults,
-    :primary_key,
-    :source,
-    :where
-  ]
-
+  #
   @doc false
   def __define__(mod, name, queryable, opts) do
     opts = Keyword.put_new(opts, :foreign_key, :"#{name}_id")
@@ -40,7 +29,7 @@ defmodule Ecto.Association.BelongsTo do
     foreign_key_name = opts[:foreign_key]
     foreign_key_type = opts[:type] || Module.get_attribute(mod, :foreign_key_type, :id)
     foreign_key_type = Ecto.Schema.Field.check_field_type!(mod, name, foreign_key_type, opts)
-    check!(foreign_key_type, opts, @valid_belongs_to_options, "belongs_to/3")
+    check!(:belongs_to, foreign_key_type, opts, "belongs_to/3")
 
     if foreign_key_name == name do
       raise ArgumentError,

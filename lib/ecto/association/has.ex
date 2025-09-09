@@ -20,26 +20,14 @@ defmodule Ecto.Association.Has do
     * `relationship` - The relationship to the specified schema, default is `:child`
     * `preload_order` - Default `order_by` of the association, used only by preload
   """
-
-  @valid_has_options [
-    :foreign_key,
-    :references,
-    :through,
-    :on_delete,
-    :defaults,
-    :on_replace,
-    :where,
-    :preload_order
-  ]
-
   @doc false
   def __define__(mod, cardinality, name, queryable, opts, fun_arity)
       when cardinality in [:one, :many] do
     if is_list(queryable) and Keyword.has_key?(queryable, :through) do
-      check!(queryable, @valid_has_options, fun_arity)
+      check!(:has, queryable, fun_arity)
       association(mod, cardinality, name, Ecto.Association.HasThrough, queryable)
     else
-      check!(opts, @valid_has_options, fun_arity)
+      check!(:has, opts, fun_arity)
 
       struct =
         association(mod, cardinality, name, Ecto.Association.Has, [queryable: queryable] ++ opts)

@@ -1,16 +1,9 @@
 defmodule Ecto.Schema.Embeds do
   import Ecto.Association.Options, only: [check!: 3]
 
-  @valid_embeds_one_options [
-    :on_replace,
-    :source,
-    :load_in_query,
-    :defaults_to_struct
-  ]
-
   @doc false
   def __define__(mod, :one, name, schema, opts, fun_arity) when is_atom(schema) do
-    check!(opts, @valid_embeds_one_options, fun_arity)
+    check!(:embeds_one, opts, fun_arity)
 
     opts =
       if Keyword.get(opts, :defaults_to_struct) do
@@ -22,11 +15,9 @@ defmodule Ecto.Schema.Embeds do
     embed(mod, :one, name, schema, opts)
   end
 
-  @valid_embeds_many_options [:on_replace, :source, :load_in_query]
-
   @doc false
   def __define__(mod, :many, name, schema, opts, fun_arity) when is_atom(schema) do
-    check!(opts, @valid_embeds_many_options, fun_arity)
+    check!(:embeds_many, opts, fun_arity)
     opts = Keyword.put(opts, :default, [])
     embed(mod, :many, name, schema, opts)
   end

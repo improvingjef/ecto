@@ -24,22 +24,9 @@ defmodule Ecto.Association.ManyToMany do
     * `preload_order` - Default `order_by` of the association, used only by preload
   """
 
-  @valid_many_to_many_options [
-    :join_through,
-    :join_defaults,
-    :join_keys,
-    :on_delete,
-    :defaults,
-    :on_replace,
-    :unique,
-    :where,
-    :join_where,
-    :preload_order
-  ]
-
   @doc false
   def __define__(mod, name, queryable, opts) do
-    check!(opts, @valid_many_to_many_options, "many_to_many/3")
+    check!(:many_to_many, opts, "many_to_many/3")
 
     struct =
       association(mod, :many, name, Ecto.Association.ManyToMany, [queryable: queryable] ++ opts)
