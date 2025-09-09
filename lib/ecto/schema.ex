@@ -683,7 +683,7 @@ defmodule Ecto.Schema do
   """
   defmacro field(name, type \\ :string, opts \\ []) do
     quote do
-      Ecto.Schema.Field.__field__(__MODULE__, unquote(name), unquote(type), unquote(opts))
+      Ecto.Schema.Field.__define__(__MODULE__, unquote(name), unquote(type), unquote(opts))
     end
   end
 
@@ -949,7 +949,14 @@ defmodule Ecto.Schema do
     opts = expand_literals(opts, __CALLER__)
 
     quote do
-      Ecto.Association.Has.__has_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.Has.__define__(
+        :many,
+        __MODULE__,
+        unquote(name),
+        unquote(schema),
+        unquote(opts),
+        "has_many/3"
+      )
     end
   end
 
@@ -1030,7 +1037,14 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Association.Has.__has_one__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.Has.__define__(
+        :one,
+        __MODULE__,
+        unquote(name),
+        unquote(schema),
+        unquote(opts),
+        "has_one/3"
+      )
     end
   end
 
@@ -1247,7 +1261,7 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Association.BelongsTo.__belongs_to__(
+      Ecto.Association.BelongsTo.__define__(
         __MODULE__,
         unquote(name),
         unquote(schema),
@@ -1549,7 +1563,12 @@ defmodule Ecto.Schema do
     opts = expand_literals(opts, __CALLER__)
 
     quote do
-      Ecto.Association.ManyToMany.__many_to_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.ManyToMany.__define__(
+        __MODULE__,
+        unquote(name),
+        unquote(schema),
+        unquote(opts)
+      )
     end
   end
 
@@ -1704,7 +1723,7 @@ defmodule Ecto.Schema do
     quote do
       embeds_one(unquote(name), unquote(schema), [], do: unquote(block))
     end
-    end
+  end
 
   defmacro embeds_one(name, schema, opts) do
     schema = expand_literals(schema, __CALLER__)
@@ -1891,7 +1910,12 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.Embeds.__embeds_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Schema.Embeds.__embeds_many__(
+        __MODULE__,
+        unquote(name),
+        unquote(schema),
+        unquote(opts)
+      )
     end
   end
 
@@ -1950,12 +1974,12 @@ defmodule Ecto.Schema do
 
     if inserted_at do
       opts = if source = timestamps[:inserted_at_source], do: [source: source], else: []
-      Ecto.Schema.Field.__field__(mod, inserted_at, type, opts)
+      Ecto.Schema.Field.__define__(mod, inserted_at, type, opts)
     end
 
     if updated_at do
       opts = if source = timestamps[:updated_at_source], do: [source: source], else: []
-      Ecto.Schema.Field.__field__(mod, updated_at, type, opts)
+      Ecto.Schema.Field.__define__(mod, updated_at, type, opts)
       Module.put_attribute(mod, :ecto_autoupdate, {[updated_at], autogen})
     end
 
@@ -2057,7 +2081,7 @@ defmodule Ecto.Schema do
         []
 
       {name, type, opts} ->
-        Ecto.Schema.Field.__field__(module, name, type, [primary_key: true] ++ opts)
+        Ecto.Schema.Field.__define__(module, name, type, [primary_key: true] ++ opts)
         [name]
 
       _other ->

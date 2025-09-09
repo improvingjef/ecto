@@ -21,7 +21,7 @@ defmodule Ecto.Schema.Field do
   ]
 
   @doc false
-  def __field__(mod, name, type, opts) do
+  def __define__(mod, name, type, opts) do
     # Check the field type before we check options because it is
     # better to raise unknown type first than unsupported option.
     type = check_field_type!(mod, name, type, opts)

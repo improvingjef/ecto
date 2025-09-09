@@ -38,7 +38,7 @@ defmodule Ecto.Association.ManyToMany do
   ]
 
   @doc false
-  def __many_to_many__(mod, name, queryable, opts) do
+  def __define__(mod, name, queryable, opts) do
     check_options!(opts, @valid_many_to_many_options, "many_to_many/3")
 
     struct =

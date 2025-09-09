@@ -30,26 +30,15 @@ defmodule Ecto.Association.Has do
     :where,
     :preload_order
   ]
-  @doc false
-  def __has_many__(mod, name, queryable, opts) do
-    if is_list(queryable) and Keyword.has_key?(queryable, :through) do
-      check_options!(queryable, @valid_has_options, "has_many/3")
-      association(mod, :many, name, Ecto.Association.HasThrough, queryable)
-    else
-      check_options!(opts, @valid_has_options, "has_many/3")
-      struct = association(mod, :many, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
-      Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
-    end
-  end
 
   @doc false
-  def __has_one__(mod, name, queryable, opts) do
+  def __define__(cardinality, mod, name, queryable, opts, fun_arity) when cardinality in [:one, :many] do
     if is_list(queryable) and Keyword.has_key?(queryable, :through) do
-      check_options!(queryable, @valid_has_options, "has_one/3")
-      association(mod, :one, name, Ecto.Association.HasThrough, queryable)
+      check_options!(queryable, @valid_has_options, fun_arity)
+      association(mod, cardinality, name, Ecto.Association.HasThrough, queryable)
     else
-      check_options!(opts, @valid_has_options, "has_one/3")
-      struct = association(mod, :one, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
+      check_options!(opts, @valid_has_options, fun_arity)
+      struct = association(mod, cardinality, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
       Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
     end
   end

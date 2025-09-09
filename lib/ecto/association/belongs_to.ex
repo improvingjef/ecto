@@ -34,7 +34,7 @@ defmodule Ecto.Association.BelongsTo do
   ]
 
   @doc false
-  def __belongs_to__(mod, name, queryable, opts) do
+  def __define__(mod, name, queryable, opts) do
     opts = Keyword.put_new(opts, :foreign_key, :"#{name}_id")
 
     foreign_key_name = opts[:foreign_key]
