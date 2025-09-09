@@ -528,25 +528,6 @@ defmodule Ecto.Schema do
     end
   end
 
-  @field_opts [
-    :default,
-    :source,
-    :autogenerate,
-    :read_after_writes,
-    :virtual,
-    :primary_key,
-    :load_in_query,
-    :redact,
-    :foreign_key,
-    :on_replace,
-    :defaults,
-    :type,
-    :where,
-    :references,
-    :skip_default_validation,
-    :writable
-  ]
-
   @doc """
   Defines an embedded schema with the given field definitions.
 
@@ -702,7 +683,7 @@ defmodule Ecto.Schema do
   """
   defmacro field(name, type \\ :string, opts \\ []) do
     quote do
-      Ecto.Schema.__field__(__MODULE__, unquote(name), unquote(type), unquote(opts))
+      Ecto.Schema.Field.__field__(__MODULE__, unquote(name), unquote(type), unquote(opts))
     end
   end
 
@@ -968,7 +949,7 @@ defmodule Ecto.Schema do
     opts = expand_literals(opts, __CALLER__)
 
     quote do
-      Ecto.Schema.__has_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.Has.__has_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
     end
   end
 
@@ -1049,7 +1030,7 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.__has_one__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.Has.__has_one__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
     end
   end
 
@@ -1266,7 +1247,12 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.__belongs_to__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.BelongsTo.__belongs_to__(
+        __MODULE__,
+        unquote(name),
+        unquote(schema),
+        unquote(opts)
+      )
     end
   end
 
@@ -1563,7 +1549,7 @@ defmodule Ecto.Schema do
     opts = expand_literals(opts, __CALLER__)
 
     quote do
-      Ecto.Schema.__many_to_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Association.ManyToMany.__many_to_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
     end
   end
 
@@ -1718,13 +1704,13 @@ defmodule Ecto.Schema do
     quote do
       embeds_one(unquote(name), unquote(schema), [], do: unquote(block))
     end
-  end
+    end
 
   defmacro embeds_one(name, schema, opts) do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.__embeds_one__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Schema.Embeds.__embeds_one__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
     end
   end
 
@@ -1745,7 +1731,7 @@ defmodule Ecto.Schema do
           unquote(Macro.escape(block))
         )
 
-      Ecto.Schema.__embeds_one__(__MODULE__, unquote(name), schema, opts)
+      Ecto.Schema.Embeds.__embeds_one__(__MODULE__, unquote(name), schema, opts)
     end
   end
 
@@ -1905,7 +1891,7 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.__embeds_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Schema.Embeds.__embeds_many__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
     end
   end
 
@@ -1926,33 +1912,8 @@ defmodule Ecto.Schema do
           unquote(Macro.escape(block))
         )
 
-      Ecto.Schema.__embeds_many__(__MODULE__, unquote(name), schema, opts)
+      Ecto.Schema.Embeds.__embeds_many__(__MODULE__, unquote(name), schema, opts)
     end
-  end
-
-  # Internal function for integrating associations into schemas.
-  #
-  # This function exists as an extension point for libraries to
-  # experiment new types of associations to Ecto, although it may
-  # break at any time (as with any of the association callbacks).
-  #
-  # This function expects the current schema, the association cardinality,
-  # the association name, the association module (that implements
-  # `Ecto.Association` callbacks) and a keyword list of options.
-  @doc false
-  @spec association(module, :one | :many, atom(), module, Keyword.t()) :: Ecto.Association.t()
-  def association(schema, cardinality, name, association, opts) do
-    not_loaded = %Ecto.Association.NotLoaded{
-      __owner__: schema,
-      __field__: name,
-      __cardinality__: cardinality
-    }
-
-    put_struct_field(schema, name, not_loaded)
-    opts = [cardinality: cardinality] ++ opts
-    struct = association.struct(schema, name, opts)
-    Module.put_attribute(schema, :ecto_assocs, {name, struct})
-    struct
   end
 
   ## Callbacks
@@ -1979,93 +1940,6 @@ defmodule Ecto.Schema do
   end
 
   @doc false
-  def __field__(mod, name, type, opts) do
-    # Check the field type before we check options because it is
-    # better to raise unknown type first than unsupported option.
-    type = check_field_type!(mod, name, type, opts)
-
-    if type == :any && !opts[:virtual] do
-      raise ArgumentError,
-            "only virtual fields can have type :any, " <>
-              "invalid type for field #{inspect(name)}"
-    end
-
-    check_options!(type, opts, @field_opts, "field/3")
-    Module.put_attribute(mod, :ecto_changeset_fields, {name, type})
-    validate_default!(type, opts[:default], opts[:skip_default_validation])
-    define_field(mod, name, type, opts)
-  end
-
-  defp define_field(mod, name, type, opts) do
-    virtual? = opts[:virtual] || false
-    pk? = opts[:primary_key] || false
-    writable = opts[:writable] || :always
-    put_struct_field(mod, name, Keyword.get(opts, :default))
-
-    redact_field? =
-      Keyword.get_lazy(opts, :redact, fn ->
-        case Module.get_attribute(mod, :schema_redact, false) do
-          :all_except_primary_keys -> not pk?
-          false -> false
-        end
-      end)
-
-    if redact_field? do
-      Module.put_attribute(mod, :ecto_redact_fields, name)
-    end
-
-    if virtual? do
-      Module.put_attribute(mod, :ecto_virtual_fields, {name, type})
-    else
-      source =
-        opts[:source] ||
-          Module.get_attribute(mod, :field_source_mapper, &Function.identity/1).(name)
-
-      if not is_atom(source) do
-        raise ArgumentError,
-              "the :source for field `#{name}` must be an atom, got: #{inspect(source)}"
-      end
-
-      if name != source do
-        Module.put_attribute(mod, :ecto_field_sources, {name, source})
-      end
-
-      if raw = opts[:read_after_writes] do
-        Module.put_attribute(mod, :ecto_raw, name)
-      end
-
-      case gen = opts[:autogenerate] do
-        {_, _, _} ->
-          store_mfa_autogenerate!(mod, name, type, gen)
-
-        true ->
-          store_type_autogenerate!(mod, name, source || name, type, pk?)
-
-        _ ->
-          :ok
-      end
-
-      if raw && gen do
-        raise ArgumentError, "cannot mark the same field as autogenerate and read_after_writes"
-      end
-
-      if writable != :always && gen do
-        raise ArgumentError, "autogenerated fields must always be writable"
-      end
-
-      if pk? do
-        Module.put_attribute(mod, :ecto_primary_keys, name)
-      end
-
-      if Keyword.get(opts, :load_in_query, true) do
-        Module.put_attribute(mod, :ecto_query_fields, {name, type})
-      end
-
-      Module.put_attribute(mod, :ecto_fields, {name, {type, writable}})
-    end
-  end
-
-  @doc false
   def __define_timestamps__(mod, opts) do
     timestamps = Keyword.merge(Module.get_attribute(mod, :timestamps_opts, []), opts)
     type = Keyword.get(timestamps, :type, :naive_datetime)
@@ -2076,12 +1950,12 @@ defmodule Ecto.Schema do
 
     if inserted_at do
       opts = if source = timestamps[:inserted_at_source], do: [source: source], else: []
-      Ecto.Schema.__field__(mod, inserted_at, type, opts)
+      Ecto.Schema.Field.__field__(mod, inserted_at, type, opts)
     end
 
     if updated_at do
       opts = if source = timestamps[:updated_at_source], do: [source: source], else: []
-      Ecto.Schema.__field__(mod, updated_at, type, opts)
+      Ecto.Schema.Field.__field__(mod, updated_at, type, opts)
       Module.put_attribute(mod, :ecto_autoupdate, {[updated_at], autogen})
     end
 
@@ -2090,138 +1964,6 @@ defmodule Ecto.Schema do
     end
 
     :ok
-  end
-
-  @valid_has_options [
-    :foreign_key,
-    :references,
-    :through,
-    :on_delete,
-    :defaults,
-    :on_replace,
-    :where,
-    :preload_order
-  ]
-
-  @doc false
-  def __has_many__(mod, name, queryable, opts) do
-    if is_list(queryable) and Keyword.has_key?(queryable, :through) do
-      check_options!(queryable, @valid_has_options, "has_many/3")
-      association(mod, :many, name, Ecto.Association.HasThrough, queryable)
-    else
-      check_options!(opts, @valid_has_options, "has_many/3")
-      struct = association(mod, :many, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
-      Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
-    end
-  end
-
-  @doc false
-  def __has_one__(mod, name, queryable, opts) do
-    if is_list(queryable) and Keyword.has_key?(queryable, :through) do
-      check_options!(queryable, @valid_has_options, "has_one/3")
-      association(mod, :one, name, Ecto.Association.HasThrough, queryable)
-    else
-      check_options!(opts, @valid_has_options, "has_one/3")
-      struct = association(mod, :one, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
-      Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
-    end
-  end
-
-  # :primary_key is valid here to support associative entity
-  # https://en.wikipedia.org/wiki/Associative_entity
-  @valid_belongs_to_options [
-    :foreign_key,
-    :references,
-    :define_field,
-    :type,
-    :on_replace,
-    :defaults,
-    :primary_key,
-    :source,
-    :where
-  ]
-
-  @doc false
-  def __belongs_to__(mod, name, queryable, opts) do
-    opts = Keyword.put_new(opts, :foreign_key, :"#{name}_id")
-
-    foreign_key_name = opts[:foreign_key]
-    foreign_key_type = opts[:type] || Module.get_attribute(mod, :foreign_key_type, :id)
-    foreign_key_type = check_field_type!(mod, name, foreign_key_type, opts)
-    check_options!(foreign_key_type, opts, @valid_belongs_to_options, "belongs_to/3")
-
-    if foreign_key_name == name do
-      raise ArgumentError,
-            "foreign_key #{inspect(name)} must be distinct from corresponding association name"
-    end
-
-    if Keyword.get(opts, :define_field, true) do
-      Module.put_attribute(mod, :ecto_changeset_fields, {foreign_key_name, foreign_key_type})
-      define_field(mod, foreign_key_name, foreign_key_type, opts)
-    end
-
-    struct =
-      association(mod, :one, name, Ecto.Association.BelongsTo, [queryable: queryable] ++ opts)
-
-    Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
-  end
-
-  @valid_many_to_many_options [
-    :join_through,
-    :join_defaults,
-    :join_keys,
-    :on_delete,
-    :defaults,
-    :on_replace,
-    :unique,
-    :where,
-    :join_where,
-    :preload_order
-  ]
-
-  @doc false
-  def __many_to_many__(mod, name, queryable, opts) do
-    check_options!(opts, @valid_many_to_many_options, "many_to_many/3")
-
-    struct =
-      association(mod, :many, name, Ecto.Association.ManyToMany, [queryable: queryable] ++ opts)
-
-    Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
-  end
-
-  @valid_embeds_one_options [:on_replace, :source, :load_in_query, :defaults_to_struct]
-
-  @doc false
-  def __embeds_one__(mod, name, schema, opts) when is_atom(schema) do
-    check_options!(opts, @valid_embeds_one_options, "embeds_one/3")
-
-    opts =
-      if Keyword.get(opts, :defaults_to_struct) do
-        Keyword.put(opts, :default, schema.__schema__(:loaded))
-      else
-        opts
-      end
-
-    embed(mod, :one, name, schema, opts)
-  end
-
-  def __embeds_one__(_mod, _name, schema, _opts) do
-    raise ArgumentError,
-          "`embeds_one/3` expects `schema` to be a module name, but received #{inspect(schema)}"
-  end
-
-  @valid_embeds_many_options [:on_replace, :source, :load_in_query]
-
-  @doc false
-  def __embeds_many__(mod, name, schema, opts) when is_atom(schema) do
-    check_options!(opts, @valid_embeds_many_options, "embeds_many/3")
-    opts = Keyword.put(opts, :default, [])
-    embed(mod, :many, name, schema, opts)
-  end
-
-  def __embeds_many__(_mod, _name, schema, _opts) do
-    raise ArgumentError,
-          "`embeds_many/3` expects `schema` to be a module name, but received #{inspect(schema)}"
   end
 
   @doc false
@@ -2315,7 +2057,7 @@ defmodule Ecto.Schema do
         []
 
       {name, type, opts} ->
-        Ecto.Schema.__field__(module, name, type, [primary_key: true] ++ opts)
+        Ecto.Schema.Field.__field__(module, name, type, [primary_key: true] ++ opts)
         [name]
 
       _other ->
@@ -2471,185 +2213,6 @@ defmodule Ecto.Schema do
         Module.get_attribute(module, :derive_inspect_for_redacted_fields, true)
     end
   end
-
-  ## Private
-
-  defp embed(mod, cardinality, name, schema, opts) do
-    opts = [cardinality: cardinality, related: schema, owner: mod, field: name] ++ opts
-    struct = Ecto.Embedded.init(opts)
-
-    Module.put_attribute(mod, :ecto_changeset_fields, {name, {:embed, struct}})
-    Module.put_attribute(mod, :ecto_embeds, {name, struct})
-    define_field(mod, name, {:parameterized, {Ecto.Embedded, struct}}, opts)
-  end
-
-  defp put_struct_field(mod, name, assoc) do
-    fields = Module.get_attribute(mod, :ecto_struct_fields)
-
-    if List.keyfind(fields, name, 0) do
-      raise ArgumentError,
-            "field/association #{inspect(name)} already exists on schema, you must either remove the duplication or choose a different name"
-    end
-
-    Module.put_attribute(mod, :ecto_struct_fields, {name, assoc})
-  end
-
-  defp validate_default!(_type, _value, true), do: :ok
-
-  defp validate_default!(type, value, _skip) do
-    case Ecto.Type.dump(type, value) do
-      {:ok, _} ->
-        :ok
-
-      _ ->
-        raise ArgumentError,
-              "value #{inspect(value)} is invalid for type #{Ecto.Type.format(type)}, can't set default"
-    end
-  end
-
-  defp check_options!(opts, valid, fun_arity) do
-    case Enum.find(opts, fn {k, _} -> k not in valid end) do
-      {k, _} -> raise ArgumentError, "invalid option #{inspect(k)} for #{fun_arity}"
-      nil -> :ok
-    end
-  end
-
-  defp check_options!({:parameterized, _}, _opts, _valid, _fun_arity) do
-    :ok
-  end
-
-  defp check_options!({_, type}, opts, valid, fun_arity) do
-    check_options!(type, opts, valid, fun_arity)
-  end
-
-  defp check_options!(_type, opts, valid, fun_arity) do
-    check_options!(opts, valid, fun_arity)
-  end
-
-  defp check_field_type!(_mod, name, :datetime, _opts) do
-    raise ArgumentError,
-          "invalid type :datetime for field #{inspect(name)}. " <>
-            "You probably meant to choose one between :naive_datetime " <>
-            "(no time zone information) or :utc_datetime (time zone is set to UTC)"
-  end
-
-  defp check_field_type!(mod, name, type, opts) do
-    cond do
-      composite?(type, name) ->
-        {outer_type, inner_type} = type
-        {outer_type, check_field_type!(mod, name, inner_type, opts)}
-
-      not is_atom(type) ->
-        raise ArgumentError, "invalid type #{Ecto.Type.format(type)} for field #{inspect(name)}"
-
-      Ecto.Type.base?(type) ->
-        type
-
-      Code.ensure_compiled(type) == {:module, type} ->
-        cond do
-          function_exported?(type, :type, 0) ->
-            type
-
-          function_exported?(type, :type, 1) ->
-            Ecto.ParameterizedType.init(type, Keyword.merge(opts, field: name, schema: mod))
-
-          function_exported?(type, :__schema__, 1) ->
-            raise ArgumentError,
-                  "schema #{inspect(type)} is not a valid type for field #{inspect(name)}." <>
-                    " Did you mean to use belongs_to, has_one, has_many, embeds_one, or embeds_many instead?"
-
-          true ->
-            raise ArgumentError,
-                  "module #{inspect(type)} given as type for field #{inspect(name)} is not an Ecto.Type/Ecto.ParameterizedType"
-        end
-
-      true ->
-        raise ArgumentError, "unknown type #{inspect(type)} for field #{inspect(name)}"
-    end
-  end
-
-  defp composite?({composite, _} = type, name) do
-    if Ecto.Type.composite?(composite) do
-      true
-    else
-      raise ArgumentError,
-            "invalid or unknown composite #{inspect(type)} for field #{inspect(name)}. " <>
-              "Did you mean to use :array or :map as first element of the tuple instead?"
-    end
-  end
-
-  defp composite?(_type, _name), do: false
-
-  defp store_mfa_autogenerate!(mod, name, type, mfa) do
-    if autogenerate_id?(type) do
-      raise ArgumentError, ":autogenerate with {m, f, a} not supported by ID types"
-    end
-
-    Module.put_attribute(mod, :ecto_autogenerate, {[name], mfa})
-  end
-
-  defp store_type_autogenerate!(mod, name, source, {:parameterized, typemod_params} = type, pk?) do
-    {typemod, params} = typemod_params
-
-    cond do
-      store_autogenerate_id!(mod, name, source, type, pk?) ->
-        :ok
-
-      not function_exported?(typemod, :autogenerate, 1) ->
-        raise ArgumentError,
-              "field #{inspect(name)} does not support :autogenerate because it uses a " <>
-                "parameterized type #{Ecto.Type.format(type)} that does not define autogenerate/1"
-
-      true ->
-        Module.put_attribute(
-          mod,
-          :ecto_autogenerate,
-          {[name], {typemod, :autogenerate, [params]}}
-        )
-    end
-  end
-
-  defp store_type_autogenerate!(mod, name, source, type, pk?) do
-    cond do
-      store_autogenerate_id!(mod, name, source, type, pk?) ->
-        :ok
-
-      Ecto.Type.primitive?(type) ->
-        raise ArgumentError,
-              "field #{inspect(name)} does not support :autogenerate because it uses a " <>
-                "primitive type #{Ecto.Type.format(type)}"
-
-      # Note the custom type has already been loaded in check_type!/3
-      not function_exported?(type, :autogenerate, 0) ->
-        raise ArgumentError,
-              "field #{inspect(name)} does not support :autogenerate because it uses a " <>
-                "custom type #{Ecto.Type.format(type)} that does not define autogenerate/0"
-
-      true ->
-        Module.put_attribute(mod, :ecto_autogenerate, {[name], {type, :autogenerate, []}})
-    end
-  end
-
-  defp store_autogenerate_id!(mod, name, source, type, pk?) do
-    cond do
-      not autogenerate_id?(type) ->
-        false
-
-      not pk? ->
-        raise ArgumentError,
-              "only primary keys allow :autogenerate for type #{Ecto.Type.format(type)}, " <>
-                "field #{inspect(name)} is not a primary key"
-
-      Module.get_attribute(mod, :ecto_autogenerate_id) ->
-        raise ArgumentError, "only one primary key with ID type may be marked as autogenerated"
-
-      true ->
-        Module.put_attribute(mod, :ecto_autogenerate_id, {name, source, type})
-        true
-    end
-  end
-
-  defp autogenerate_id?(type), do: Ecto.Type.type(type) in [:id, :binary_id]
 
   defp expand_literals(ast, env) do
     if Macro.quoted_literal?(ast) do
