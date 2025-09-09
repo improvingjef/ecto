@@ -1,5 +1,5 @@
 defmodule Ecto.Schema.Field do
-  import Ecto.Association.CheckOptions, only: [check_options!: 4, put_struct_field: 3]
+  import Ecto.Association.Options, only: [check!: 4, put_struct_field: 3]
 
   @field_opts [
     :default,
@@ -32,7 +32,7 @@ defmodule Ecto.Schema.Field do
               "invalid type for field #{inspect(name)}"
     end
 
-    check_options!(type, opts, @field_opts, "field/3")
+    check!(type, opts, @field_opts, "field/3")
     Module.put_attribute(mod, :ecto_changeset_fields, {name, type})
     validate_default!(type, opts[:default], opts[:skip_default_validation])
     define_field(mod, name, type, opts)

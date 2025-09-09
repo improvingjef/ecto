@@ -950,8 +950,8 @@ defmodule Ecto.Schema do
 
     quote do
       Ecto.Association.Has.__define__(
-        :many,
         __MODULE__,
+        :many,
         unquote(name),
         unquote(schema),
         unquote(opts),
@@ -1038,8 +1038,8 @@ defmodule Ecto.Schema do
 
     quote do
       Ecto.Association.Has.__define__(
-        :one,
         __MODULE__,
+        :one,
         unquote(name),
         unquote(schema),
         unquote(opts),
@@ -1729,7 +1729,7 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.Embeds.__embeds_one__(__MODULE__, unquote(name), unquote(schema), unquote(opts))
+      Ecto.Schema.Embeds.__define__(__MODULE__, :one, unquote(name), unquote(schema), unquote(opts), "embeds_one/3")
     end
   end
 
@@ -1750,7 +1750,7 @@ defmodule Ecto.Schema do
           unquote(Macro.escape(block))
         )
 
-      Ecto.Schema.Embeds.__embeds_one__(__MODULE__, unquote(name), schema, opts)
+      Ecto.Schema.Embeds.__define__(__MODULE__, :one, unquote(name), schema, opts, "embeds_one/4")
     end
   end
 
@@ -1910,11 +1910,13 @@ defmodule Ecto.Schema do
     schema = expand_literals(schema, __CALLER__)
 
     quote do
-      Ecto.Schema.Embeds.__embeds_many__(
+      Ecto.Schema.Embeds.__define__(
         __MODULE__,
+        :many,
         unquote(name),
         unquote(schema),
-        unquote(opts)
+        unquote(opts),
+        "embeds_many/3"
       )
     end
   end
@@ -1936,7 +1938,14 @@ defmodule Ecto.Schema do
           unquote(Macro.escape(block))
         )
 
-      Ecto.Schema.Embeds.__embeds_many__(__MODULE__, unquote(name), schema, opts)
+      Ecto.Schema.Embeds.__define__(
+        __MODULE__,
+        :many,
+        unquote(name),
+        schema,
+        opts,
+        "embeds_many/4"
+      )
     end
   end
 

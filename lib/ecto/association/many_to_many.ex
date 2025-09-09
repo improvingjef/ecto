@@ -1,6 +1,6 @@
 defmodule Ecto.Association.ManyToMany do
   import Ecto.Query, only: [from: 2, where: 3]
-  import Ecto.Association.CheckOptions, only: [check_options!: 3, association: 5]
+  import Ecto.Association.Options, only: [check!: 3, association: 5]
 
   @moduledoc """
   The association struct for `many_to_many` associations.
@@ -39,7 +39,7 @@ defmodule Ecto.Association.ManyToMany do
 
   @doc false
   def __define__(mod, name, queryable, opts) do
-    check_options!(opts, @valid_many_to_many_options, "many_to_many/3")
+    check!(opts, @valid_many_to_many_options, "many_to_many/3")
 
     struct =
       association(mod, :many, name, Ecto.Association.ManyToMany, [queryable: queryable] ++ opts)

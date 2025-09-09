@@ -1,21 +1,21 @@
-defmodule Ecto.Association.CheckOptions do
-  def check_options!(opts, valid, fun_arity) do
+defmodule Ecto.Association.Options do
+  def check!(opts, valid, fun_arity) do
     case Enum.find(opts, fn {k, _} -> k not in valid end) do
       {k, _} -> raise ArgumentError, "invalid option #{inspect(k)} for #{fun_arity}"
       nil -> :ok
     end
   end
 
-  def check_options!({:parameterized, _}, _opts, _valid, _fun_arity) do
+  def check!({:parameterized, _}, _opts, _valid, _fun_arity) do
     :ok
   end
 
-  def check_options!({_, type}, opts, valid, fun_arity) do
-    check_options!(type, opts, valid, fun_arity)
+  def check!({_, type}, opts, valid, fun_arity) do
+    check!(type, opts, valid, fun_arity)
   end
 
-  def check_options!(_type, opts, valid, fun_arity) do
-    check_options!(opts, valid, fun_arity)
+  def check!(_type, opts, valid, fun_arity) do
+    check!(opts, valid, fun_arity)
   end
 
   # Internal function for integrating associations into schemas.

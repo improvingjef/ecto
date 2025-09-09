@@ -1,24 +1,25 @@
 defmodule Ecto.Association.Has do
   import Ecto.Query, only: [from: 2]
-  import Ecto.Association.CheckOptions
+  import Ecto.Association.Options
+
   @moduledoc """
-         The association struct for `has_one` and `has_many` associations.
+  The association struct for `has_one` and `has_many` associations.
 
-         Its fields are:
+  Its fields are:
 
-           * `cardinality` - The association cardinality
-           * `field` - The name of the association field on the schema
-           * `owner` - The schema where the association was defined
-           * `related` - The schema that is associated
-           * `owner_key` - The key on the `owner` schema used for the association
-           * `related_key` - The key on the `related` schema used for the association
-           * `queryable` - The real query to use for querying association
-           * `on_delete` - The action taken on associations when schema is deleted
-           * `on_replace` - The action taken on associations when schema is replaced
-           * `defaults` - Default fields used when building the association
-           * `relationship` - The relationship to the specified schema, default is `:child`
-           * `preload_order` - Default `order_by` of the association, used only by preload
-         """
+    * `cardinality` - The association cardinality
+    * `field` - The name of the association field on the schema
+    * `owner` - The schema where the association was defined
+    * `related` - The schema that is associated
+    * `owner_key` - The key on the `owner` schema used for the association
+    * `related_key` - The key on the `related` schema used for the association
+    * `queryable` - The real query to use for querying association
+    * `on_delete` - The action taken on associations when schema is deleted
+    * `on_replace` - The action taken on associations when schema is replaced
+    * `defaults` - Default fields used when building the association
+    * `relationship` - The relationship to the specified schema, default is `:child`
+    * `preload_order` - Default `order_by` of the association, used only by preload
+  """
 
   @valid_has_options [
     :foreign_key,
@@ -32,13 +33,17 @@ defmodule Ecto.Association.Has do
   ]
 
   @doc false
-  def __define__(cardinality, mod, name, queryable, opts, fun_arity) when cardinality in [:one, :many] do
+  def __define__(mod, cardinality, name, queryable, opts, fun_arity)
+      when cardinality in [:one, :many] do
     if is_list(queryable) and Keyword.has_key?(queryable, :through) do
-      check_options!(queryable, @valid_has_options, fun_arity)
+      check!(queryable, @valid_has_options, fun_arity)
       association(mod, cardinality, name, Ecto.Association.HasThrough, queryable)
     else
-      check_options!(opts, @valid_has_options, fun_arity)
-      struct = association(mod, cardinality, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
+      check!(opts, @valid_has_options, fun_arity)
+
+      struct =
+        association(mod, cardinality, name, Ecto.Association.Has, [queryable: queryable] ++ opts)
+
       Module.put_attribute(mod, :ecto_changeset_fields, {name, {:assoc, struct}})
     end
   end

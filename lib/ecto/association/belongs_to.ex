@@ -1,6 +1,6 @@
 defmodule Ecto.Association.BelongsTo do
   import Ecto.Query, only: [from: 2]
-  import Ecto.Association.CheckOptions, only: [check_options!: 4, association: 5]
+  import Ecto.Association.Options, only: [check!: 4, association: 5]
 
   @moduledoc """
   The association struct for a `belongs_to` association.
@@ -40,7 +40,7 @@ defmodule Ecto.Association.BelongsTo do
     foreign_key_name = opts[:foreign_key]
     foreign_key_type = opts[:type] || Module.get_attribute(mod, :foreign_key_type, :id)
     foreign_key_type = Ecto.Schema.Field.check_field_type!(mod, name, foreign_key_type, opts)
-    check_options!(foreign_key_type, opts, @valid_belongs_to_options, "belongs_to/3")
+    check!(foreign_key_type, opts, @valid_belongs_to_options, "belongs_to/3")
 
     if foreign_key_name == name do
       raise ArgumentError,

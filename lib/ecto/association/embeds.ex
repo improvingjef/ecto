@@ -1,11 +1,16 @@
 defmodule Ecto.Schema.Embeds do
-  import Ecto.Association.CheckOptions, only: [check_options!: 3]
+  import Ecto.Association.Options, only: [check!: 3]
 
-  @valid_embeds_one_options [:on_replace, :source, :load_in_query, :defaults_to_struct]
+  @valid_embeds_one_options [
+    :on_replace,
+    :source,
+    :load_in_query,
+    :defaults_to_struct
+  ]
 
   @doc false
-  def __embeds_one__(mod, name, schema, opts) when is_atom(schema) do
-    check_options!(opts, @valid_embeds_one_options, "embeds_one/3")
+  def __define__(mod, :one, name, schema, opts, fun_arity) when is_atom(schema) do
+    check!(opts, @valid_embeds_one_options, fun_arity)
 
     opts =
       if Keyword.get(opts, :defaults_to_struct) do
@@ -17,23 +22,18 @@ defmodule Ecto.Schema.Embeds do
     embed(mod, :one, name, schema, opts)
   end
 
-  def __embeds_one__(_mod, _name, schema, _opts) do
-    raise ArgumentError,
-          "`embeds_one/3` expects `schema` to be a module name, but received #{inspect(schema)}"
-  end
-
   @valid_embeds_many_options [:on_replace, :source, :load_in_query]
 
   @doc false
-  def __embeds_many__(mod, name, schema, opts) when is_atom(schema) do
-    check_options!(opts, @valid_embeds_many_options, "embeds_many/3")
+  def __define__(mod, :many, name, schema, opts, fun_arity) when is_atom(schema) do
+    check!(opts, @valid_embeds_many_options, fun_arity)
     opts = Keyword.put(opts, :default, [])
     embed(mod, :many, name, schema, opts)
   end
 
-  def __embeds_many__(_mod, _name, schema, _opts) do
+  def __define__(_mod, _cardinality, _name, schema, _opts, fun_arity) do
     raise ArgumentError,
-          "`embeds_many/3` expects `schema` to be a module name, but received #{inspect(schema)}"
+          "`#{fun_arity}` expects `schema` to be a module name, but received #{inspect(schema)}"
   end
 
   defp embed(mod, cardinality, name, schema, opts) do
