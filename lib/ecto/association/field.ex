@@ -30,22 +30,12 @@ defmodule Ecto.Schema.Field do
     |> Keyword.put_new(:virtual, false)
     |> Keyword.put_new(:primary_key, false)
 
+    opt_in(:redact, mod, name, type, opts)
 
     virtual? = opts[:virtual] || false
     pk? = opts[:primary_key] || false
     writable = opts[:writable] || :always
 
-    redact_field? =
-      Keyword.get_lazy(opts, :redact, fn ->
-        case Module.get_attribute(mod, :schema_redact, false) do
-          :all_except_primary_keys -> not pk?
-          false -> false
-        end
-      end)
-
-    if redact_field? do
-      Module.put_attribute(mod, :ecto_redact_fields, name)
-    end
 
     if virtual? do
       Module.put_attribute(mod, :ecto_virtual_fields, {name, type})
