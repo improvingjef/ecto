@@ -68,6 +68,7 @@ defmodule Ecto.Association.Options do
     Map.get(@default_options, which, [])
   end
 
+  # TODO: I want to change the behavior to allow but warn and ignore invalid options
   def check!(which, opts, fun_arity) do
     case Enum.find(opts, fn {k, _} -> k not in valid(which) end) do
       {k, _} -> raise ArgumentError, "invalid option #{inspect(k)} for #{fun_arity}"
