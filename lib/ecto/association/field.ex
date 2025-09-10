@@ -20,7 +20,7 @@ defmodule Ecto.Schema.Field do
   end
 
   def define_field(mod, name, type, opts) do
-    put_struct_field(mod, name, Keyword.get(opts, :default))
+    put_struct_field(mod, name, opts[:default])
 
     opts = opts
     |> Keyword.put_new(:redact, should_redact?(mod, opts))
@@ -30,7 +30,7 @@ defmodule Ecto.Schema.Field do
     |> Keyword.put_new(:virtual, false)
     |> Keyword.put_new(:primary_key, false)
 
-    [:redact, :virtual, :source, :read_after_writes, :writable, :primary_key,:load_in_query, :autogenerate]
+    [:redact, :virtual, :source, :read_after_writes, :writable, :primary_key, :load_in_query, :autogenerate]
     |> Enum.reduce(mod, fn option, mod -> opt_in(option, mod, name, type, opts) end)
   end
 
