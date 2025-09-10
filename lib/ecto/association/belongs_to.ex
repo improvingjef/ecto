@@ -24,21 +24,22 @@ defmodule Ecto.Association.BelongsTo do
   #
   @doc false
   def __define__(mod, name, queryable, opts) do
-    opts = Keyword.put_new(opts, :foreign_key, :"#{name}_id")
+    opts = opts
+    |> Keyword.put_new(:foreign_key, :"#{name}_id")
+    |> Keyword.put_new(:type, Module.get_attribute(mod, :foreign_key_type, :id))
+    |> Keyword.put_new(:define_field, true)
 
-    foreign_key_name = opts[:foreign_key]
-    foreign_key_type = opts[:type] || Module.get_attribute(mod, :foreign_key_type, :id)
-    foreign_key_type = Ecto.Schema.Field.check_field_type!(mod, name, foreign_key_type, opts)
+    foreign_key_type = Ecto.Schema.Field.check_field_type!(mod, name, opts[:type], opts)
     check!(:belongs_to, foreign_key_type, opts, "belongs_to/3")
 
-    if foreign_key_name == name do
+    if opts[:foreign_key] == name do
       raise ArgumentError,
             "foreign_key #{inspect(name)} must be distinct from corresponding association name"
     end
 
-    if Keyword.get(opts, :define_field, true) do
-      Module.put_attribute(mod, :ecto_changeset_fields, {foreign_key_name, foreign_key_type})
-      Ecto.Schema.Field.define_field(mod, foreign_key_name, foreign_key_type, opts)
+    if opts[:define_field] do
+      Module.put_attribute(mod, :ecto_changeset_fields, {opts[:foreign_key], foreign_key_type})
+      Ecto.Schema.Field.define_field(mod, opts[:foreign_key], foreign_key_type, opts)
     end
 
     struct =
