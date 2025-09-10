@@ -6,22 +6,18 @@ defmodule Ecto.Schema.Field do
     # Check the field type before we check options because it is
     # better to raise unknown type first than unsupported option.
     type = check_field_type!(mod, name, type, opts)
-
     if type == :any && !opts[:virtual] do
       raise ArgumentError,
             "only virtual fields can have type :any, " <>
               "invalid type for field #{inspect(name)}"
     end
-
     check!(:field, type, opts, "field/3")
-    Module.put_attribute(mod, :ecto_changeset_fields, {name, type})
     opt_in!(:default, mod, name, type, opts)
     define_field(mod, name, type, opts)
+    Module.put_attribute(mod, :ecto_changeset_fields, {name, type})
   end
 
   def define_field(mod, name, type, opts) do
-    put_struct_field(mod, name, opts[:default])
-
     opts = opts
     |> Keyword.put_new(:redact, should_redact?(mod, opts))
     |> Keyword.put_new(:source, Module.get_attribute(mod, :field_source_mapper, &Function.identity/1).(name))
@@ -32,6 +28,8 @@ defmodule Ecto.Schema.Field do
 
     [:redact, :virtual, :source, :read_after_writes, :writable, :primary_key, :load_in_query, :autogenerate]
     |> Enum.reduce(mod, fn option, mod -> opt_in!(option, mod, name, type, opts) end)
+
+    put_struct_field(mod, name, opts[:default])
   end
 
   defp store_mfa_autogenerate!(mod, name, type, mfa) do
