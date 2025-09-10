@@ -31,44 +31,45 @@ defmodule Ecto.Schema.Field do
     |> Keyword.put_new(:primary_key, false)
 
     opt_in(:redact, mod, name, type, opts)
+    opt_in(:virtual, mod, name, type, opts)
+    opt_in(:source, mod, name, type, opts)
+    opt_in(:read_after_writes, mod, name, type, opts)
 
     virtual? = opts[:virtual] || false
     pk? = opts[:primary_key] || false
     writable = opts[:writable] || :always
 
 
-    if virtual? do
-      Module.put_attribute(mod, :ecto_virtual_fields, {name, type})
-    else
-      source =
-        opts[:source] ||
-          Module.get_attribute(mod, :field_source_mapper, &Function.identity/1).(name)
+    if not virtual? do
+      # source =
+      #   opts[:source] ||
+      #     Module.get_attribute(mod, :field_source_mapper, &Function.identity/1).(name)
 
-      if not is_atom(source) do
-        raise ArgumentError,
-              "the :source for field `#{name}` must be an atom, got: #{inspect(source)}"
-      end
+      # if not is_atom(source) do
+      #   raise ArgumentError,
+      #         "the :source for field `#{name}` must be an atom, got: #{inspect(source)}"
+      # end
 
-      if name != source do
-        Module.put_attribute(mod, :ecto_field_sources, {name, source})
-      end
+      # if name != source do
+      #   Module.put_attribute(mod, :ecto_field_sources, {name, source})
+      # end
 
-      if raw = opts[:read_after_writes] do
-        Module.put_attribute(mod, :ecto_raw, name)
-      end
+      # if raw = opts[:read_after_writes] do
+      #   Module.put_attribute(mod, :ecto_raw, name)
+      # end
 
       case gen = opts[:autogenerate] do
         {_, _, _} ->
           store_mfa_autogenerate!(mod, name, type, gen)
 
         true ->
-          store_type_autogenerate!(mod, name, source || name, type, pk?)
+          store_type_autogenerate!(mod, name, opts[:source] || name, type, pk?)
 
         _ ->
           :ok
       end
 
-      if raw && gen do
+      if opts[:read_after_writes] && gen do
         raise ArgumentError, "cannot mark the same field as autogenerate and read_after_writes"
       end
 
