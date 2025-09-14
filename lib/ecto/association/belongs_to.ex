@@ -106,41 +106,43 @@ defmodule Ecto.Association.BelongsTo do
     |> Keyword.put_new(:on_delete, :raise)
     |> Keyword.put_new(:field, name)
     |> Keyword.put_new(:owner, module)
-    |> Enum.reduce([], fn {option, value}, options -> opt_in(option, value, module, name) ++ options end)
 
+    opts = Enum.reduce(opts, opts, fn {option, value}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
+  dbg(opts)
     struct(__MODULE__, opts)
   end
 
   # TODO: normalize :foreign_key and :owner_key
-  def opt_in(:foreign_key, owner_key, _, _) do
-    [owner_key: owner_key]
+  def opt_in(:foreign_key, options, _, _) do
+    [owner_key: options[:foreign_key]]
   end
 
-  def opt_in(:queryable, queryable, _module, name) do
-    [queryable: queryable, related: Ecto.Association.related_from_query(queryable, name)]
+  def opt_in(:queryable, options, _module, name) do
+    [queryable: options[:queryable], related: Ecto.Association.related_from_query(options[:queryable], name)]
   end
 
-  def opt_in(:defaults, defaults, module, name) do
-    [defaults: Ecto.Association.validate_defaults!(module, name, defaults)]
+  def opt_in(:defaults, options, module, name) do
+    [defaults: Ecto.Association.validate_defaults!(module, name, options[:defaults])]
   end
 
-  def opt_in(:on_replace, on_replace, _module, name) do
+  def opt_in(:on_replace, options, _module, name) do
+    on_replace = options[:on_replace]
     unless on_replace in @on_replace_opts do
       raise ArgumentError,
             "invalid `:on_replace` option for #{inspect(name)}. " <>
-              "The only valid options are: " <>
+              "Got: #{inspect(on_replace)}. The only valid options are: " <>
               Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
     end
     [on_replace: on_replace]
   end
 
   # TODO: normalize :references and :related_key
-  def opt_in(:references, references, _, _) do
-    [related_key: references]
+  def opt_in(:references, options, _, _) do
+    [related_key: options[:references]]
   end
 
-  def opt_in(option, value, _, _) do
-    Keyword.put([], option, value)
+  def opt_in(option, options, _, _) do
+    Keyword.put([], option, options[option])
   end
 
   @impl true

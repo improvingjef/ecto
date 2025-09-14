@@ -100,9 +100,9 @@ defmodule Ecto.Association.Has do
     |> Keyword.put_new(:on_delete, :nothing)
     |> Keyword.put_new(:on_replace, :raise)
     |> Keyword.put_new(:references, nil)
-    
-    opts = Enum.reduce(opts, [], fn {option, value}, options ->
-      opt_in(option, Keyword.merge(opts, options), module, name) ++ options
+
+    opts = Enum.reduce(opts, opts, fn {option, value}, options ->
+      Keyword.merge(options, opt_in(option, options, module, name))
     end)
 
     struct(__MODULE__, opts)
@@ -120,9 +120,10 @@ defmodule Ecto.Association.Has do
             "schema does not have the field #{inspect(ref)} used by " <>
               "association #{inspect(name)}, please set the :references option accordingly"
     end
-    []
-    |> Keyword.put(:owner_key, ref)
-    |> Keyword.put(:related_key, options[:foreign_key] || Ecto.Association.association_key(module, ref))
+    [
+    {:owner_key, ref},
+    {:related_key, options[:foreign_key] || Ecto.Association.association_key(module, ref)}
+    ]
   end
 
   def opt_in(:where, options, _module, name) do
