@@ -101,11 +101,22 @@ defmodule Ecto.Association.ManyToMany do
     |> Keyword.put_new(:preload_order, [])
     |> Keyword.put_new(:cardinality, :many)
     |> Keyword.put_new(:unique, false)
+    |> Keyword.put_new(:join_keys, nil)
 
-    queryable = Keyword.fetch!(opts, :queryable)
+    opts =
+    opts
+    |> Enum.reduce(opts, fn {option, _}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
+    # |> Keyword.put(:related, related)
+    # |> Keyword.put(:owner_key, owner_key)
+    # |> Keyword.put(:join_keys, join_keys)
+
+    struct(__MODULE__, opts)
+  end
+
+  def opt_in(:join_keys, options, module, name) do
+    join_keys = options[:join_keys]
+    queryable = Keyword.fetch!(options, :queryable)
     related = Ecto.Association.related_from_query(queryable, name)
-
-    join_keys = opts[:join_keys]
 
     {owner_key, join_keys} =
       case join_keys do
@@ -130,15 +141,7 @@ defmodule Ecto.Association.ManyToMany do
             "schema does not have the field #{inspect(owner_key)} used by " <>
               "association #{inspect(name)}, please set the :join_keys option accordingly"
     end
-
-    opts =
-    opts
-    |> Enum.reduce(opts, fn {option, _}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
-    |> Keyword.put(:related, related)
-    |> Keyword.put(:owner_key, owner_key)
-    |> Keyword.put(:join_keys, join_keys)
-
-    struct(__MODULE__, opts)
+    [related: related, join_keys: join_keys, owner_key: owner_key]
   end
 
   def opt_in(:join_through, options, module, name) do
