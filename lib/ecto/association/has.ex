@@ -91,18 +91,15 @@ defmodule Ecto.Association.Has do
 
   @impl true
   def struct(module, name, opts) do
+    dbg({"default", opts})
     opts = opts
     |> Keyword.put(:owner, module)
     |> Keyword.put(:field, name)
     |> Keyword.put_new(:where, [])
     |> Keyword.put_new(:defaults, [])
     |> Keyword.put_new(:preload_order, [])
-    # |> Keyword.put(:on_delete, opts[:on_delete] || :nothing)
-    # |> Keyword.put(:on_replace, opts[:on_replace] ||:raise)
-
-    # opts = Enum.reduce(opts, [], fn {option, value}, options ->
-    #   opt_in(option, Keyword.merge(opts, options), module, name) ++ options
-    # end)
+    |> Keyword.put_new(:on_delete, :nothing)
+    |> Keyword.put_new(:on_replace, :raise)
 
     queryable = Keyword.fetch!(opts, :queryable)
     cardinality = Keyword.fetch!(opts, :cardinality)
@@ -126,7 +123,7 @@ defmodule Ecto.Association.Has do
     end
 
     on_delete = Keyword.get(opts, :on_delete, :nothing)
-
+    dbg({"on_delete", on_delete, @on_delete_opts})
     unless on_delete in @on_delete_opts do
       raise ArgumentError,
             "invalid :on_delete option for #{inspect(name)}. " <>
@@ -152,6 +149,12 @@ defmodule Ecto.Association.Has do
       raise ArgumentError,
             "expected `:where` for #{inspect(name)} to be a keyword list, got: `#{inspect(where)}`"
     end
+
+    opts = Enum.reduce(opts, [], fn {option, value}, options ->
+      opt_in(option, Keyword.merge(opts, options), module, name) ++ options
+    end)
+
+    dbg(opts)
 
     %__MODULE__{
       field: opts[:field],
@@ -191,7 +194,6 @@ defmodule Ecto.Association.Has do
   end
 
   def opt_in(:references, options, module, name) do
-    dbg({"opt_in", options})
     ref =
       module
       |> Module.get_attribute(:primary_key)
