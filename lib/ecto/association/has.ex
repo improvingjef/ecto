@@ -91,7 +91,6 @@ defmodule Ecto.Association.Has do
 
   @impl true
   def struct(module, name, opts) do
-    dbg({"default", opts})
     opts = opts
     |> Keyword.put(:owner, module)
     |> Keyword.put(:field, name)
@@ -122,19 +121,9 @@ defmodule Ecto.Association.Has do
               "option, the schema should not be passed as second argument"
     end
 
-    preload_order = Ecto.Association.validate_preload_order!(name, opts[:preload_order] || [])
-    where = opts[:where] || []
-
-    unless is_list(where) do
-      raise ArgumentError,
-            "expected `:where` for #{inspect(name)} to be a keyword list, got: `#{inspect(where)}`"
-    end
-
     opts = Enum.reduce(opts, [], fn {option, value}, options ->
       opt_in(option, Keyword.merge(opts, options), module, name) ++ options
     end)
-
-    dbg(opts)
 
     %__MODULE__{
       field: opts[:field],
@@ -146,8 +135,8 @@ defmodule Ecto.Association.Has do
       on_delete: opts[:on_delete],
       on_replace: opts[:on_replace],
       defaults: opts[:defaults],
-      where: where,
-      preload_order: preload_order,
+      where: opts[:where],
+      preload_order: opts[:preload_order],
       related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref)
     }
   end
