@@ -122,24 +122,24 @@ defmodule Ecto.Association.Has do
               "option, the schema should not be passed as second argument"
     end
 
-    on_delete = Keyword.get(opts, :on_delete, :nothing)
-    dbg({"on_delete", on_delete, @on_delete_opts})
-    unless on_delete in @on_delete_opts do
-      raise ArgumentError,
-            "invalid :on_delete option for #{inspect(name)}. " <>
-              "The only valid options are: " <>
-              Enum.map_join(@on_delete_opts, ", ", &"`#{inspect(&1)}`")
-    end
+    # on_delete = Keyword.get(opts, :on_delete, :nothing)
+    # dbg({"on_delete", on_delete, @on_delete_opts})
+    # unless on_delete in @on_delete_opts do
+    #   raise ArgumentError,
+    #         "invalid :on_delete option for #{inspect(name)}. " <>
+    #           "The only valid options are: " <>
+    #           Enum.map_join(@on_delete_opts, ", ", &"`#{inspect(&1)}`")
+    # end
 
-    on_replace = Keyword.get(opts, :on_replace, :raise)
-    on_replace_opts = if cardinality == :one, do: @has_one_on_replace_opts, else: @on_replace_opts
+    # on_replace = Keyword.get(opts, :on_replace, :raise)
+    # on_replace_opts = if cardinality == :one, do: @has_one_on_replace_opts, else: @on_replace_opts
 
-    unless on_replace in on_replace_opts do
-      raise ArgumentError,
-            "invalid `:on_replace` option for #{inspect(name)}. " <>
-              "The only valid options are: " <>
-              Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
-    end
+    # unless on_replace in on_replace_opts do
+    #   raise ArgumentError,
+    #         "invalid `:on_replace` option for #{inspect(name)}. " <>
+    #           "The only valid options are: " <>
+    #           Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
+    # end
 
     defaults = Ecto.Association.validate_defaults!(module, name, opts[:defaults] || [])
     preload_order = Ecto.Association.validate_preload_order!(name, opts[:preload_order] || [])
@@ -163,8 +163,8 @@ defmodule Ecto.Association.Has do
       related: related,
       owner_key: ref,
       queryable: opts[:queryable],
-      on_delete: on_delete,
-      on_replace: on_replace,
+      on_delete: opts[:on_delete],
+      on_replace: opts[:on_replace],
       defaults: defaults,
       where: where,
       preload_order: preload_order,
