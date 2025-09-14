@@ -111,6 +111,7 @@ defmodule Ecto.Association.BelongsTo do
     struct(__MODULE__, opts)
   end
 
+  # TODO: normalize :foreign_key and :owner_key
   def opt_in(:foreign_key, owner_key, _, _) do
     [owner_key: owner_key]
   end
@@ -133,6 +134,7 @@ defmodule Ecto.Association.BelongsTo do
     [on_replace: on_replace]
   end
 
+  # TODO: normalize :references and :related_key
   def opt_in(:references, references, _, _) do
     [related_key: references]
   end

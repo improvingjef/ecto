@@ -91,6 +91,15 @@ defmodule Ecto.Association.Has do
 
   @impl true
   def struct(module, name, opts) do
+    opts = opts
+    |> Keyword.put(:owner, module)
+    |> Keyword.put(:field, name)
+    |> Keyword.put(:on_delete, opts[:on_delete] || :nothing)
+    |> Keyword.put(:on_replace, opts[:on_replace] ||:raise)
+    |> Keyword.put_new(:where, [])
+    |> Keyword.put_new(:defaults, [])
+    |> Keyword.put_new(:preload_order, [])
+
     queryable = Keyword.fetch!(opts, :queryable)
     cardinality = Keyword.fetch!(opts, :cardinality)
     related = Ecto.Association.related_from_query(queryable, name)
@@ -154,6 +163,103 @@ defmodule Ecto.Association.Has do
       preload_order: preload_order,
       related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref)
     }
+  end
+
+  # @impl true
+  def struct2(module, name, opts) do
+    opts = opts
+    |> Keyword.put(:owner, module)
+    |> Keyword.put(:field, name)
+    |> Keyword.put(:on_delete, opts[:on_delete] || :nothing)
+    |> Keyword.put(:on_replace, opts[:on_replace] ||:raise)
+    |> Keyword.put_new(:where, [])
+    |> Keyword.put_new(:defaults, [])
+    |> Keyword.put_new(:preload_order, [])
+
+    opts = Enum.reduce(opts, [], fn {option, value}, options ->
+      dbg(opt_in(option, Keyword.merge(opts, options), module, name) ++ options)
+
+    end)
+
+
+    struct(__MODULE__, opts) # ++ [related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref), owner_key: ref])
+
+  end
+
+  def opt_in(:references, options, module, name) do
+    dbg({"opt_in", options})
+    ref =
+      module
+      |> Module.get_attribute(:primary_key)
+      |> get_ref(options[:references], name)
+
+    unless Module.get_attribute(module, :ecto_fields)[ref] do
+      raise ArgumentError,
+            "schema does not have the field #{inspect(ref)} used by " <>
+              "association #{inspect(name)}, please set the :references option accordingly"
+    end
+
+    [owner_key: ref, related_key: options[:foreign_key] || Ecto.Association.association_key(module, ref)]
+  end
+
+  def opt_in(:where, options, _module, name) do
+    unless is_list(options[:where]) do
+      raise ArgumentError,
+            "expected `:where` for #{inspect(name)} to be a keyword list, got: `#{inspect(options[:where])}`"
+    end
+    [where: options[:where]]
+  end
+  # if :through exists, raise an error
+  def opt_in(:through, _options, _module, name) do
+    raise ArgumentError,
+          "invalid association #{inspect(name)}. When using the :through " <>
+            "option, the schema should not be passed as second argument"
+  end
+
+  def opt_in(:preload_order, options, _module, name) do
+    preload_order = Ecto.Association.validate_preload_order!(name, options[:preload_order])
+    [preload_order: preload_order]
+  end
+
+  def opt_in(:defaults, options, module, name) do
+    defaults = Ecto.Association.validate_defaults!(module, name, options[:defaults])
+    [defaults: defaults]
+  end
+
+  def opt_in(:queryable, options, _module, name) do
+    queryable = Keyword.fetch!(options, :queryable)
+    related = Ecto.Association.related_from_query(queryable, name)
+    [queryable: queryable, related: related]
+  end
+
+  def opt_in(:on_delete, options, _module, name) do
+    on_delete = options[:on_delete]
+
+    unless on_delete in @on_delete_opts do
+      raise ArgumentError,
+            "invalid :on_delete option for #{inspect(name)}. " <>
+              "The only valid options are: " <>
+              Enum.map_join(@on_delete_opts, ", ", &"`#{inspect(&1)}`")
+    end
+    [on_delete: on_delete]
+  end
+
+  def opt_in(:on_replace, options, _module, name) do
+    cardinality = Keyword.fetch!(options, :cardinality)
+    on_replace = options[:on_replace]
+    on_replace_opts = if cardinality == :one, do: @has_one_on_replace_opts, else: @on_replace_opts
+
+    unless on_replace in on_replace_opts do
+      raise ArgumentError,
+            "invalid `:on_replace` option for #{inspect(name)}. " <>
+              "The only valid options are: " <>
+              Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
+    end
+    [on_replace: on_replace]
+  end
+
+  def opt_in(option, options, _module, _name) do
+    Keyword.put([], option, options[option])
   end
 
   defp get_ref(primary_key, nil, name) when primary_key in [nil, false] do
