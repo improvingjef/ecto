@@ -91,6 +91,11 @@ defmodule Ecto.Association.Has do
 
   @impl true
   def struct(module, name, opts) do
+    ref =
+      module
+      |> Module.get_attribute(:primary_key)
+      |> get_ref(opts[:references], name)
+
     opts = opts
     |> Keyword.put(:owner, module)
     |> Keyword.put(:field, name)
@@ -99,15 +104,11 @@ defmodule Ecto.Association.Has do
     |> Keyword.put_new(:preload_order, [])
     |> Keyword.put_new(:on_delete, :nothing)
     |> Keyword.put_new(:on_replace, :raise)
+    |> Keyword.put(:related_key, opts[:foreign_key] || Ecto.Association.association_key(module, ref))
 
     queryable = Keyword.fetch!(opts, :queryable)
-    cardinality = Keyword.fetch!(opts, :cardinality)
     related = Ecto.Association.related_from_query(queryable, name)
 
-    ref =
-      module
-      |> Module.get_attribute(:primary_key)
-      |> get_ref(opts[:references], name)
 
     unless Module.get_attribute(module, :ecto_fields)[ref] do
       raise ArgumentError,
@@ -115,16 +116,12 @@ defmodule Ecto.Association.Has do
               "association #{inspect(name)}, please set the :references option accordingly"
     end
 
-    if opts[:through] do
-      raise ArgumentError,
-            "invalid association #{inspect(name)}. When using the :through " <>
-              "option, the schema should not be passed as second argument"
-    end
-
+    dbg(opts)
     opts = Enum.reduce(opts, [], fn {option, value}, options ->
       opt_in(option, Keyword.merge(opts, options), module, name) ++ options
     end)
-
+    dbg(opts)
+    dbg( opts[:foreign_key] || Ecto.Association.association_key(module, ref))
     %__MODULE__{
       field: opts[:field],
       cardinality: opts[:cardinality],
@@ -137,7 +134,7 @@ defmodule Ecto.Association.Has do
       defaults: opts[:defaults],
       where: opts[:where],
       preload_order: opts[:preload_order],
-      related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref)
+      related_key: opts[:related_key] # opts[:foreign_key] || Ecto.Association.association_key(module, ref)
     }
   end
 
