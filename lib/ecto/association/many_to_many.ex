@@ -131,7 +131,6 @@ defmodule Ecto.Association.ManyToMany do
               "association #{inspect(name)}, please set the :join_keys option accordingly"
     end
 
-    dbg(opts[:join_defaults])
     if(is_binary(join_through) and not is_nil(opts[:join_defaults]) and opts[:join_defaults] != []) do
       raise ArgumentError, ":join_defaults has no effect for a :join_through without a schema"
     end
@@ -144,7 +143,7 @@ defmodule Ecto.Association.ManyToMany do
       owner: opts[:owner],
       related: related,
       owner_key: owner_key,
-      queryable: queryable,
+      queryable: opts[:queryable],
       on_delete: opts[:on_delete],
       on_replace: opts[:on_replace],
       defaults: opts[:defaults],
