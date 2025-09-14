@@ -99,13 +99,13 @@ defmodule Ecto.Association.ManyToMany do
     |> Keyword.put_new(:defaults, [])
     |> Keyword.put_new(:join_defaults, [])
     |> Keyword.put_new(:preload_order, [])
+    |> Keyword.put_new(:cardinality, :many)
+    |> Keyword.put_new(:unique, false)
 
     queryable = Keyword.fetch!(opts, :queryable)
     related = Ecto.Association.related_from_query(queryable, name)
 
     join_keys = opts[:join_keys]
-    join_through = opts[:join_through]
-    validate_join_through(name, join_through)
 
     {owner_key, join_keys} =
       case join_keys do
@@ -131,15 +131,11 @@ defmodule Ecto.Association.ManyToMany do
               "association #{inspect(name)}, please set the :join_keys option accordingly"
     end
 
-    if(is_binary(join_through) and not is_nil(opts[:join_defaults]) and opts[:join_defaults] != []) do
-      raise ArgumentError, ":join_defaults has no effect for a :join_through without a schema"
-    end
-
     opts =  Enum.reduce(opts, opts, fn {option, _}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
 
     %__MODULE__{
       field: opts[:field],
-      cardinality: Keyword.fetch!(opts, :cardinality),
+      cardinality: opts[:cardinality],
       owner: opts[:owner],
       related: related,
       owner_key: owner_key,
@@ -151,10 +147,20 @@ defmodule Ecto.Association.ManyToMany do
       preload_order: opts[:preload_order],
       join_keys: join_keys,
       join_where: opts[:join_where],
-      join_through: join_through,
+      join_through: opts[:join_through],
       join_defaults: opts[:join_defaults],
-      unique: Keyword.get(opts, :unique, false)
+      unique: opts[:unique]
     }
+  end
+
+  def opt_in(:join_through, options, module, name) do
+    join_through = options[:join_through]
+    validate_join_through(name, join_through)
+    join_defaults = options[:join_defaults]
+    if(is_binary(join_through) and not is_nil(join_defaults) and join_defaults != []) do
+      raise ArgumentError, ":join_defaults has no effect for a :join_through without a schema"
+    end
+    [] # should leave as is
   end
 
   def opt_in(option, options, _module, name) when option in [:where, :join_where] do
