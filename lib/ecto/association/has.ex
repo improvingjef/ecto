@@ -106,10 +106,6 @@ defmodule Ecto.Association.Has do
     |> Keyword.put_new(:on_replace, :raise)
     |> Keyword.put(:related_key, opts[:foreign_key] || Ecto.Association.association_key(module, ref))
 
-    queryable = Keyword.fetch!(opts, :queryable)
-    related = Ecto.Association.related_from_query(queryable, name)
-
-
     unless Module.get_attribute(module, :ecto_fields)[ref] do
       raise ArgumentError,
             "schema does not have the field #{inspect(ref)} used by " <>
@@ -126,7 +122,7 @@ defmodule Ecto.Association.Has do
       field: opts[:field],
       cardinality: opts[:cardinality],
       owner: opts[:owner],
-      related: related,
+      related: opts[:related],
       owner_key: ref,
       queryable: opts[:queryable],
       on_delete: opts[:on_delete],
