@@ -91,11 +91,6 @@ defmodule Ecto.Association.Has do
 
   @impl true
   def struct(module, name, opts) do
-    ref =
-      module
-      |> Module.get_attribute(:primary_key)
-      |> get_ref(opts[:references], name)
-
     opts = opts
     |> Keyword.put(:owner, module)
     |> Keyword.put(:field, name)
@@ -104,56 +99,15 @@ defmodule Ecto.Association.Has do
     |> Keyword.put_new(:preload_order, [])
     |> Keyword.put_new(:on_delete, :nothing)
     |> Keyword.put_new(:on_replace, :raise)
-    |> Keyword.put(:related_key, opts[:foreign_key] || Ecto.Association.association_key(module, ref))
-
-    unless Module.get_attribute(module, :ecto_fields)[ref] do
-      raise ArgumentError,
-            "schema does not have the field #{inspect(ref)} used by " <>
-              "association #{inspect(name)}, please set the :references option accordingly"
-    end
-
-    dbg(opts)
+    |> Keyword.put_new(:references, nil)
+    
     opts = Enum.reduce(opts, [], fn {option, value}, options ->
       opt_in(option, Keyword.merge(opts, options), module, name) ++ options
     end)
-    dbg(opts)
-    dbg( opts[:foreign_key] || Ecto.Association.association_key(module, ref))
-    %__MODULE__{
-      field: opts[:field],
-      cardinality: opts[:cardinality],
-      owner: opts[:owner],
-      related: opts[:related],
-      owner_key: ref,
-      queryable: opts[:queryable],
-      on_delete: opts[:on_delete],
-      on_replace: opts[:on_replace],
-      defaults: opts[:defaults],
-      where: opts[:where],
-      preload_order: opts[:preload_order],
-      related_key: opts[:related_key] # opts[:foreign_key] || Ecto.Association.association_key(module, ref)
-    }
+
+    struct(__MODULE__, opts)
   end
 
-  # @impl true
-  def struct2(module, name, opts) do
-    opts = opts
-    |> Keyword.put(:owner, module)
-    |> Keyword.put(:field, name)
-    |> Keyword.put(:on_delete, opts[:on_delete] || :nothing)
-    |> Keyword.put(:on_replace, opts[:on_replace] ||:raise)
-    |> Keyword.put_new(:where, [])
-    |> Keyword.put_new(:defaults, [])
-    |> Keyword.put_new(:preload_order, [])
-
-    opts = Enum.reduce(opts, [], fn {option, value}, options ->
-      dbg(opt_in(option, Keyword.merge(opts, options), module, name) ++ options)
-
-    end)
-
-
-    struct(__MODULE__, opts) # ++ [related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref), owner_key: ref])
-
-  end
 
   def opt_in(:references, options, module, name) do
     ref =
@@ -161,13 +115,14 @@ defmodule Ecto.Association.Has do
       |> Module.get_attribute(:primary_key)
       |> get_ref(options[:references], name)
 
-    unless Module.get_attribute(module, :ecto_fields)[ref] do
+      unless Module.get_attribute(module, :ecto_fields)[ref] do
       raise ArgumentError,
             "schema does not have the field #{inspect(ref)} used by " <>
               "association #{inspect(name)}, please set the :references option accordingly"
     end
-
-    [owner_key: ref, related_key: options[:foreign_key] || Ecto.Association.association_key(module, ref)]
+    []
+    |> Keyword.put(:owner_key, ref)
+    |> Keyword.put(:related_key, options[:foreign_key] || Ecto.Association.association_key(module, ref))
   end
 
   def opt_in(:where, options, _module, name) do
