@@ -94,11 +94,15 @@ defmodule Ecto.Association.Has do
     opts = opts
     |> Keyword.put(:owner, module)
     |> Keyword.put(:field, name)
-    |> Keyword.put(:on_delete, opts[:on_delete] || :nothing)
-    |> Keyword.put(:on_replace, opts[:on_replace] ||:raise)
     |> Keyword.put_new(:where, [])
     |> Keyword.put_new(:defaults, [])
     |> Keyword.put_new(:preload_order, [])
+    # |> Keyword.put(:on_delete, opts[:on_delete] || :nothing)
+    # |> Keyword.put(:on_replace, opts[:on_replace] ||:raise)
+
+    # opts = Enum.reduce(opts, [], fn {option, value}, options ->
+    #   opt_in(option, Keyword.merge(opts, options), module, name) ++ options
+    # end)
 
     queryable = Keyword.fetch!(opts, :queryable)
     cardinality = Keyword.fetch!(opts, :cardinality)
@@ -151,11 +155,11 @@ defmodule Ecto.Association.Has do
 
     %__MODULE__{
       field: name,
-      cardinality: cardinality,
+      cardinality: opts[:cardinality],
       owner: module,
       related: related,
       owner_key: ref,
-      queryable: queryable,
+      queryable: opts[:queryable],
       on_delete: on_delete,
       on_replace: on_replace,
       defaults: defaults,
