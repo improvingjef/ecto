@@ -108,7 +108,6 @@ defmodule Ecto.Association.BelongsTo do
     |> Keyword.put_new(:owner, module)
 
     opts = Enum.reduce(opts, opts, fn {option, value}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
-  dbg(opts)
     struct(__MODULE__, opts)
   end
 
