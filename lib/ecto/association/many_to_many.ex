@@ -131,26 +131,14 @@ defmodule Ecto.Association.ManyToMany do
               "association #{inspect(name)}, please set the :join_keys option accordingly"
     end
 
-    opts =  Enum.reduce(opts, opts, fn {option, _}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
+    opts =
+    opts
+    |> Enum.reduce(opts, fn {option, _}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
+    |> Keyword.put(:related, related)
+    |> Keyword.put(:owner_key, owner_key)
+    |> Keyword.put(:join_keys, join_keys)
 
-    %__MODULE__{
-      field: opts[:field],
-      cardinality: opts[:cardinality],
-      owner: opts[:owner],
-      related: related,
-      owner_key: owner_key,
-      queryable: opts[:queryable],
-      on_delete: opts[:on_delete],
-      on_replace: opts[:on_replace],
-      defaults: opts[:defaults],
-      where: opts[:where],
-      preload_order: opts[:preload_order],
-      join_keys: join_keys,
-      join_where: opts[:join_where],
-      join_through: opts[:join_through],
-      join_defaults: opts[:join_defaults],
-      unique: opts[:unique]
-    }
+    struct(__MODULE__, opts)
   end
 
   def opt_in(:join_through, options, module, name) do
@@ -169,7 +157,7 @@ defmodule Ecto.Association.ManyToMany do
             "expected `#{inspect(option)}` for #{inspect(name)} to be a keyword list, got: `#{inspect(options[:where])}`"
     end
     [{option, options[option]}]
-    end
+  end
 
   def opt_in(:preload_order, options, _module, name) do
     preload_order = Ecto.Association.validate_preload_order!(name, options[:preload_order])
