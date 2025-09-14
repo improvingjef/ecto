@@ -154,9 +154,9 @@ defmodule Ecto.Association.Has do
     end
 
     %__MODULE__{
-      field: name,
+      field: opts[:field],
       cardinality: opts[:cardinality],
-      owner: module,
+      owner: opts[:owner],
       related: related,
       owner_key: ref,
       queryable: opts[:queryable],
