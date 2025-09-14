@@ -101,7 +101,7 @@ defmodule Ecto.Association.Has do
     |> Keyword.put_new(:on_replace, :raise)
     |> Keyword.put_new(:references, nil)
 
-    opts = Enum.reduce(opts, opts, fn {option, value}, options ->
+    opts = Enum.reduce(opts, opts, fn {option, _value}, options ->
       Keyword.merge(options, opt_in(option, options, module, name))
     end)
 
@@ -177,7 +177,7 @@ defmodule Ecto.Association.Has do
       raise ArgumentError,
             "invalid `:on_replace` option for #{inspect(name)}. " <>
               "The only valid options are: " <>
-              Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
+              Enum.map_join(on_replace_opts, ", ", &"`#{inspect(&1)}`")
     end
     [on_replace: on_replace]
   end

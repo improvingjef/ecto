@@ -89,6 +89,17 @@ defmodule Ecto.Association.ManyToMany do
 
   @impl true
   def struct(module, name, opts) do
+    opts = opts
+    |> Keyword.put(:field, name)
+    |> Keyword.put(:owner, module)
+    |> Keyword.put_new(:on_delete, :nothing)
+    |> Keyword.put_new(:on_replace, :raise)
+    |> Keyword.put_new(:where, [])
+    |> Keyword.put_new(:join_where, [])
+    |> Keyword.put_new(:defaults, [])
+    |> Keyword.put_new(:join_defaults, [])
+    |> Keyword.put_new(:preload_order, [])
+
     queryable = Keyword.fetch!(opts, :queryable)
     related = Ecto.Association.related_from_query(queryable, name)
 
@@ -120,8 +131,54 @@ defmodule Ecto.Association.ManyToMany do
               "association #{inspect(name)}, please set the :join_keys option accordingly"
     end
 
-    on_delete = Keyword.get(opts, :on_delete, :nothing)
-    on_replace = Keyword.get(opts, :on_replace, :raise)
+    dbg(opts[:join_defaults])
+    if(is_binary(join_through) and not is_nil(opts[:join_defaults]) and opts[:join_defaults] != []) do
+      raise ArgumentError, ":join_defaults has no effect for a :join_through without a schema"
+    end
+
+    opts =  Enum.reduce(opts, opts, fn {option, _}, options -> Keyword.merge(options, opt_in(option, options, module, name)) end)
+
+    %__MODULE__{
+      field: opts[:field],
+      cardinality: Keyword.fetch!(opts, :cardinality),
+      owner: opts[:owner],
+      related: related,
+      owner_key: owner_key,
+      queryable: queryable,
+      on_delete: opts[:on_delete],
+      on_replace: opts[:on_replace],
+      defaults: opts[:defaults],
+      where: opts[:where],
+      preload_order: opts[:preload_order],
+      join_keys: join_keys,
+      join_where: opts[:join_where],
+      join_through: join_through,
+      join_defaults: opts[:join_defaults],
+      unique: Keyword.get(opts, :unique, false)
+    }
+  end
+
+  def opt_in(option, options, _module, name) when option in [:where, :join_where] do
+    unless is_list(options[:where]) do
+      raise ArgumentError,
+            "expected `#{inspect(option)}` for #{inspect(name)} to be a keyword list, got: `#{inspect(options[:where])}`"
+    end
+    [{option, options[option]}]
+    end
+
+  def opt_in(:preload_order, options, _module, name) do
+    preload_order = Ecto.Association.validate_preload_order!(name, options[:preload_order])
+    [preload_order: preload_order]
+  end
+
+  def opt_in(option, options, module, name) when option in [:defaults, :join_defaults] do
+    defaults = Ecto.Association.validate_defaults!(module, name, options[option])
+    [{option, defaults}]
+
+  end
+
+  def opt_in(:on_delete, options, _module, name) do
+    on_delete = options[:on_delete]
 
     unless on_delete in @on_delete_opts do
       raise ArgumentError,
@@ -129,6 +186,11 @@ defmodule Ecto.Association.ManyToMany do
               "The only valid options are: " <>
               Enum.map_join(@on_delete_opts, ", ", &"`#{inspect(&1)}`")
     end
+    [on_delete: on_delete]
+  end
+
+  def opt_in(:on_replace, options, _module, name) do
+    on_replace = options[:on_replace]
 
     unless on_replace in @on_replace_opts do
       raise ArgumentError,
@@ -136,45 +198,11 @@ defmodule Ecto.Association.ManyToMany do
               "The only valid options are: " <>
               Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
     end
+    [on_replace: on_replace]
+  end
 
-    where = opts[:where] || []
-    join_where = opts[:join_where] || []
-    defaults = Ecto.Association.validate_defaults!(module, name, opts[:defaults] || [])
-    join_defaults = Ecto.Association.validate_defaults!(module, name, opts[:join_defaults] || [])
-    preload_order = Ecto.Association.validate_preload_order!(name, opts[:preload_order] || [])
-
-    unless is_list(where) do
-      raise ArgumentError,
-            "expected `:where` for #{inspect(name)} to be a keyword list, got: `#{inspect(where)}`"
-    end
-
-    unless is_list(join_where) do
-      raise ArgumentError,
-            "expected `:join_where` for #{inspect(name)} to be a keyword list, got: `#{inspect(join_where)}`"
-    end
-
-    if opts[:join_defaults] && is_binary(join_through) do
-      raise ArgumentError, ":join_defaults has no effect for a :join_through without a schema"
-    end
-
-    %__MODULE__{
-      field: name,
-      cardinality: Keyword.fetch!(opts, :cardinality),
-      owner: module,
-      related: related,
-      owner_key: owner_key,
-      queryable: queryable,
-      on_delete: on_delete,
-      on_replace: on_replace,
-      defaults: defaults,
-      where: where,
-      preload_order: preload_order,
-      join_keys: join_keys,
-      join_where: join_where,
-      join_through: join_through,
-      join_defaults: join_defaults,
-      unique: Keyword.get(opts, :unique, false)
-    }
+  def opt_in(option, options, _module, _name) do
+    Keyword.put([], option, options[option])
   end
 
   defp default_join_keys(module, related) do
