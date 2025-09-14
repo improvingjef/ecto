@@ -1,6 +1,7 @@
 defmodule Ecto.Association.BelongsTo do
   import Ecto.Query, only: [from: 2]
   import Ecto.Association.Options, only: [check!: 4, association: 5]
+  use Ecto.Changeset.Relation
 
   @moduledoc """
   The association struct for a `belongs_to` association.
@@ -49,6 +50,13 @@ defmodule Ecto.Association.BelongsTo do
   end
 
   @behaviour Ecto.Association
+  @impl true
+  def build(refl, owner, attributes) do
+    refl
+    |> build(owner)
+    |> struct(attributes)
+  end
+
   @on_replace_opts [:raise, :mark_as_invalid, :delete, :delete_if_exists, :nilify, :update]
   defstruct [
     :field,
@@ -66,6 +74,7 @@ defmodule Ecto.Association.BelongsTo do
     unique: true,
     ordered: false
   ]
+
 
   @impl true
   def after_verify_validation(%{queryable: queryable, related_key: related_key}) do
@@ -89,44 +98,47 @@ defmodule Ecto.Association.BelongsTo do
 
   @impl true
   def struct(module, name, opts) do
-    ref = if ref = opts[:references], do: ref, else: :id
-    queryable = Keyword.fetch!(opts, :queryable)
-    related = Ecto.Association.related_from_query(queryable, name)
-    on_replace = Keyword.get(opts, :on_replace, :raise)
+    opts = opts
+    |> Keyword.put_new(:references, :id)
+    |> Keyword.put_new(:on_replace, :raise)
+    |> Keyword.put_new(:defaults, [])
+    |> Keyword.put_new(:where, [])
+    |> Keyword.put_new(:on_delete, :raise)
+    |> Keyword.put_new(:field, name)
+    |> Keyword.put_new(:owner, module)
+    |> Enum.reduce([], fn {option, value}, options -> opt_in(option, value, module, name) ++ options end)
 
+    struct(__MODULE__, opts)
+  end
+
+  def opt_in(:foreign_key, owner_key, _, _) do
+    [owner_key: owner_key]
+  end
+
+  def opt_in(:queryable, queryable, _module, name) do
+    [queryable: queryable, related: Ecto.Association.related_from_query(queryable, name)]
+  end
+
+  def opt_in(:defaults, defaults, module, name) do
+    [defaults: Ecto.Association.validate_defaults!(module, name, defaults)]
+  end
+
+  def opt_in(:on_replace, on_replace, _module, name) do
     unless on_replace in @on_replace_opts do
       raise ArgumentError,
             "invalid `:on_replace` option for #{inspect(name)}. " <>
               "The only valid options are: " <>
               Enum.map_join(@on_replace_opts, ", ", &"`#{inspect(&1)}`")
     end
-
-    defaults = Ecto.Association.validate_defaults!(module, name, opts[:defaults] || [])
-    where = opts[:where] || []
-
-    unless is_list(where) do
-      raise ArgumentError,
-            "expected `:where` for #{inspect(name)} to be a keyword list, got: `#{inspect(where)}`"
-    end
-
-    %__MODULE__{
-      field: name,
-      owner: module,
-      related: related,
-      owner_key: Keyword.fetch!(opts, :foreign_key),
-      related_key: ref,
-      queryable: queryable,
-      on_replace: on_replace,
-      defaults: defaults,
-      where: where
-    }
+    [on_replace: on_replace]
   end
 
-  @impl true
-  def build(refl, owner, attributes) do
-    refl
-    |> build(owner)
-    |> struct(attributes)
+  def opt_in(:references, references, _, _) do
+    [related_key: references]
+  end
+
+  def opt_in(option, value, _, _) do
+    Keyword.put([], option, value)
   end
 
   @impl true
@@ -206,15 +218,5 @@ defmodule Ecto.Association.BelongsTo do
       {:error, changeset} ->
         {:error, changeset}
     end
-  end
-
-  ## Relation callbacks
-  @behaviour Ecto.Changeset.Relation
-
-  @impl true
-  def build(%{related: related, queryable: queryable, defaults: defaults}, owner) do
-    related
-    |> Ecto.Association.apply_defaults(defaults, owner)
-    |> Ecto.Association.merge_source(queryable)
   end
 end

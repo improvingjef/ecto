@@ -1,6 +1,7 @@
 defmodule Ecto.Association.ManyToMany do
   import Ecto.Query, only: [from: 2, where: 3]
   import Ecto.Association.Options, only: [check!: 3, association: 5]
+  use Ecto.Changeset.Relation
 
   @moduledoc """
   The association struct for `many_to_many` associations.
@@ -162,17 +163,17 @@ defmodule Ecto.Association.ManyToMany do
       owner: module,
       related: related,
       owner_key: owner_key,
+      queryable: queryable,
+      on_delete: on_delete,
+      on_replace: on_replace,
+      defaults: defaults,
+      where: where,
+      preload_order: preload_order,
       join_keys: join_keys,
       join_where: join_where,
       join_through: join_through,
       join_defaults: join_defaults,
-      queryable: queryable,
-      on_delete: on_delete,
-      on_replace: on_replace,
-      unique: Keyword.get(opts, :unique, false),
-      defaults: defaults,
-      where: where,
-      preload_order: preload_order
+      unique: Keyword.get(opts, :unique, false)
     }
   end
 
@@ -392,16 +393,6 @@ defmodule Ecto.Association.ManyToMany do
 
   defp dump!(action, join_through, struct, field, _) when is_atom(join_through) do
     field!(action, struct, field)
-  end
-
-  ## Relation callbacks
-  @behaviour Ecto.Changeset.Relation
-
-  @impl true
-  def build(%{related: related, queryable: queryable, defaults: defaults}, owner) do
-    related
-    |> Ecto.Association.apply_defaults(defaults, owner)
-    |> Ecto.Association.merge_source(queryable)
   end
 
   ## On delete callbacks

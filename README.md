@@ -1,3 +1,34 @@
+## Goals
+- Make Ecto extensible
+- Auto-generate migrations from diffs
+- Auto-generate schema modules from database tables
+- allow plug-ins such as
+  - soft deletes
+  - tenancy
+  - rbac && fine-grained, query-based authorization
+  - composite primary keys
+  - additional relationships, e.g. has_one_of_many
+
+[] Identify and refactor similarities in struct function between schema element types (field, embeds_one, embeds_many, has_one, has_many, belongs_to)
+[] Create join table module/struct for many-to-many relationships
+[] Create field option attributes for changeset validations to allow for auto-creation of changesets
+  [] required
+  [] unique
+  [] acceptance - add confirmation macro similar to field that creates a boolean field and records a message
+    [] add module attributes to track acceptance fields
+    [] define acceptance field
+  [] confirmation - add confirmation macro similar to field that takes two field names
+    [] define confirmation field
+    [] add module attributes to track confirmation fields
+  [] validator
+  [] exclude - make work with relational queries
+  [] format
+  [] include - make work with relational queries
+  [] length
+  [] number validations
+  [] subset - make work with relational queries
+[] add query scopes
+
 <img width="250" src="https://github.com/elixir-ecto/ecto/raw/master/guides/images/logo.png#gh-light-mode-only" alt="Ecto">
 <img width="250" src="https://github.com/elixir-ecto/ecto/raw/master/guides/images/logo-white.png#gh-dark-mode-only" alt="Ecto">
 

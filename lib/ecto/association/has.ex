@@ -1,6 +1,16 @@
 defmodule Ecto.Association.Has do
   import Ecto.Query, only: [from: 2]
   import Ecto.Association.Options
+  use Ecto.Changeset.Relation
+
+  # ## Relation callbacks
+  # @behaviour Ecto.Changeset.Relation
+
+  # @impl true
+  # def build(%{related: related, queryable: queryable, defaults: defaults}, owner) do
+  #   related
+  #   |> Ecto.Association.apply_defaults(defaults, owner)
+  #   |> Ecto.Association.merge_source(queryable)
 
   @moduledoc """
   The association struct for `has_one` and `has_many` associations.
@@ -136,13 +146,13 @@ defmodule Ecto.Association.Has do
       owner: module,
       related: related,
       owner_key: ref,
-      related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref),
       queryable: queryable,
       on_delete: on_delete,
       on_replace: on_replace,
       defaults: defaults,
       where: where,
-      preload_order: preload_order
+      preload_order: preload_order,
+      related_key: opts[:foreign_key] || Ecto.Association.association_key(module, ref)
     }
   end
 
@@ -256,15 +266,7 @@ defmodule Ecto.Association.Has do
     {related_key, Map.get(owner, owner_key)}
   end
 
-  ## Relation callbacks
-  @behaviour Ecto.Changeset.Relation
-
-  @impl true
-  def build(%{related: related, queryable: queryable, defaults: defaults}, owner) do
-    related
-    |> Ecto.Association.apply_defaults(defaults, owner)
-    |> Ecto.Association.merge_source(queryable)
-  end
+  # end
 
   ## On delete callbacks
 
